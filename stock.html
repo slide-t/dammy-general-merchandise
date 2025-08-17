@@ -1,1 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Management</title>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; background:#f4f6f9; }
+  header { background:#001219; color:#fff; padding:15px; text-align:center; font-weight:bold; }
+  nav { display:flex; justify-content:center; gap:12px; margin:10px 0; }
+  nav a { text-decoration:none; background:#0077b6; color:white; padding:10px 15px; border-radius:6px; }
+  nav a:hover { background:#023e8a; }
+  .container { max-width:900px; margin:20px auto; padding:20px; background:#fff; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
+  input, select, button { width:100%; padding:10px; margin:5px 0; border:1px solid #ccc; border-radius:6px; }
+  button { cursor:pointer; background:#0077b6; color:white; border:none; font-weight:bold; }
+  button:hover { background:#023e8a; }
+  table { width:100%; margin-top:15px; border-collapse:collapse; }
+  th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+  th { background:#0077b6; color:white; }
+  .alert { padding:10px; margin-top:10px; border-radius:6px; font-weight:bold; }
+  .alert-warning { background:#fff3cd; color:#856404; }
+  .alert-danger { background:#f8d7da; color:#721c24; }
+  .grid-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+  @media(max-width:680px){ .grid-3 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
 
+<header>📦 Stock Management</header>
+
+<nav>
+  <a href="admin.html">Admin</a>
+  <a href="sales.html">Sales</a>
+  <a href="stock.html">Stock</a>
+</nav>
+
+<div class="container">
+  <h2>Add New Item</h2>
+  <form id="stockForm" class="grid-3" autocomplete="off">
+    <div>
+      <label>Category</label>
+      <select id="category" required>
+        <option value="">— Select —</option>
+        <option>Beverages</option>
+        <option>Bakery</option>
+        <option>Canned Goods</option>
+        <option>Dairy</option>
+        <option>Frozen Foods</option>
+        <option>Meat & Poultry</option>
+        <option>Produce</option>
+        <option>Snacks</option>
+        <option>Household</option>
+        <option>Personal Care</option>
+        <option>Spices & Seasoning</option>
+        <option>Grains & Cereals</option>
+        <option>Oils & Condiments</option>
+      </select>
+    </div>
+    <div>
+      <label>Subcategory</label>
+      <input id="subcategory" type="text" placeholder="e.g., Soft Drinks">
+    </div>
+    <div>
+      <label>Item Name</label>
+      <input id="itemName" type="text" placeholder="e.g., Coca-Cola 50cl" required>
+    </div>
+    <div>
+      <label>Price (₦)</label>
+      <input id="itemPrice" type="number" min="0" step="0.01" required>
+    </div>
+    <div>
+      <label>Quantity</label>
+      <input id="itemQty" type="number" min="1" required>
+    </div>
+    <div>
+      <label>Subtotal (₦)</label>
+      <input id="itemSubtotal" type="text" readonly placeholder="Auto">
+    </div>
+    <div style="grid-column:1/-1;">
+      <button type="submit">➕ Add Item</button>
+      <span id="formMsg"></span>
+    </div>
+  </form>
+
+  <h2>Inventory</h2>
+  <div id="alerts"></div>
+  <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Barcode</th>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Subcategory</th>
+          <th>Qty</th>
+          <th>Price (₦)</th>
+          <th>Subtotal (₦)</th>
+        </tr>
+      </thead>
+      <tbody id="inventoryTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let db;
+const request = indexedDB.open("StoreDB", 1);
+
+request.onupgradeneeded = function(e) {
+  db = e.target.result;
+  if(!db.objectStoreNames.contains("stock")){
+    db.createObjectStore("stock", { keyPath: "barcode" });
+  }
+};
+
+request.onsuccess = function(e){
+  db = e.target.result;
+  renderInventory();
+};
+
+request.onerror = function(){ alert("DB error"); };
+
+// Generate mixed barcode
+function genBarcode(){
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  return Array.from({length:8}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+// Subtotal auto-update
+const priceInp = document.getElementById("itemPrice");
+const qtyInp = document.getElementById("itemQty");
+const subtotalInp = document.getElementById("itemSubtotal");
+
+function updateSubtotal(){
+  const p=parseFloat(priceInp.value)||0;
+  const q=parseInt(qtyInp.value,10)||0;
+  subtotalInp.value = q*p || '';
+}
+priceInp.addEventListener("input",updateSubtotal);
+qtyInp.addEventListener("input",updateSubtotal);
+
+const form = document.getElementById("stockForm");
+const formMsg = document.getElementById("formMsg");
+
+form.addEventListener("submit",(e)=>{
+  e.preventDefault();
+  const category = document.getElementById("category").value;
+  const subcategory = document.getElementById("subcategory").value.trim();
+  const name = document.getElementById("itemName").value.trim();
+  const price = parseFloat(priceInp.value);
+  const qty = parseInt(qtyInp.value,10);
+
+  if(!category || !name || isNaN(price)||price<0||isNaN(qty)||qty<1){
+    formMsg.textContent="Please fill all fields correctly.";
+    return;
+  }
+
+  const barcode = genBarcode();
+  const item = { barcode, category, subcategory, name, price, qty, subtotal: price*qty };
+
+  const tx = db.transaction("stock","readwrite");
+  const store = tx.objectStore("stock");
+  store.add(item);
+  tx.oncomplete = ()=>{ 
+    formMsg.textContent=`✅ Added: ${name} (Barcode: ${barcode})`;
+    form.reset();
+    subtotalInp.value='';
+    renderInventory();
+  };
+});
+
+// Render inventory and low stock alerts
+function renderInventory(){
+  const tbody = document.getElementById("inventoryTable");
+  const alertsDiv = document.getElementById("alerts");
+  tbody.innerHTML="";
+  alertsDiv.innerHTML="";
+
+  const tx = db.transaction("stock","readonly");
+  const store = tx.objectStore("stock");
+  store.openCursor().onsuccess = function(e){
+    const cursor = e.target.result;
+    if(cursor){
+      const item = cursor.value;
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${item.barcode}</td><td>${item.name}</td><td>${item.category}</td><td>${item.subcategory}</td><td>${item.qty}</td><td>₦${item.price}</td><td>₦${item.price*item.qty}</td>`;
+      tbody.appendChild(tr);
+
+      if(item.qty<=5){
+        const div=document.createElement("div");
+        div.className="alert "+(item.qty===0?"alert-danger":"alert-warning");
+        div.textContent=`⚠ Low stock: ${item.name} — Qty ${item.qty}`;
+        alertsDiv.appendChild(div);
+      }
+      cursor.continue();
+    }
+  };
+}
+</script>
+
+</body>
+</html>
