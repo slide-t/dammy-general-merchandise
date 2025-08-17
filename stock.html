@@ -318,7 +318,66 @@ addStockBtn.addEventListener("click", () => {
   const qty = parseInt(itemQty.value);
   const price = parseFloat(itemPrice.value);
 
-  if (!name || !category || !qty || !price) { alert("❌ Please fill all fields"); return; }
+  if (!name || !category || !qty || !price) { 
+    alert("❌ Please fill all fields"); 
+    return; 
+  }
+
+  // Disable button and show spinner
+  addStockBtn.disabled = true;
+  const originalText = addStockBtn.textContent;
+  addStockBtn.innerHTML = `
+    <span class="spinner" style="
+      border: 3px solid transparent; 
+      border-top: 3px solid red; 
+      border-right: 3px solid green; 
+      border-bottom: 3px solid blue; 
+      border-left: 3px solid yellow; 
+      width: 18px; height: 18px; border-radius: 50%; 
+      display: inline-block; animation: spin 1s linear infinite;
+      margin-right: 8px;"></span> Adding...`;
+
+  // Generate barcode
+  const barcode = generateBarcode();
+  const dateAdded = new Date().toISOString();
+  const tx = db.transaction("stock", "readwrite").objectStore("stock");
+
+  tx.add({ barcode, name, category, qty, price, dateAdded });
+
+  tx.oncomplete = () => {
+    // Reset button
+    addStockBtn.disabled = false;
+    addStockBtn.textContent = originalText;
+
+    // Render stock table
+    renderStock();
+
+    // Show confirmation popup
+    if (confirm(`✅ Item "${name}" added successfully!\nClick OK to add more.`)) {
+      // Clear input fields
+      itemName.value = "";
+      itemCategory.value = "";
+      itemQty.value = "";
+      itemPrice.value = "";
+      itemName.focus();
+    }
+  };
+
+  tx.onerror = () => {
+    alert("❌ Item already exists or DB error.");
+    addStockBtn.disabled = false;
+    addStockBtn.textContent = originalText;
+  };
+});
+
+// Spinner animation
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}`;
+document.head.appendChild(style);
 
   // Disable button & show spinner
   addStockBtn.disabled = true;
