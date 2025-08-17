@@ -166,9 +166,9 @@ input[type=date] {
   </div>
 </div>
   
-  <!-- Dashboard Panels -->
+  <!-- Dashboard Panels --
   <div id="dashboard" style="display:none;">
-<!-- Stock Panel -->
+<!-- Stock Panel --
 <div class="panel">
   <div class="flex-between">
     <h2>Stock Overview</h2>
@@ -183,7 +183,7 @@ input[type=date] {
   </div>
 </div>
 
-<!-- Sales Panel -->
+<!-- Sales Panel --
 <div class="panel">
   <div class="flex-between">
     <h2>Sales Report</h2>
@@ -198,7 +198,7 @@ input[type=date] {
   </div>
 </div>
    
-  
+  -->
   
   <!-- Admin Panel: Devices -->
 <div class="panel">
@@ -292,6 +292,57 @@ function renderSales(from=null,to=null){
   };
 }
 
+// --- Stock Totals ---
+function updateStockTotals() {
+  const tx = db.transaction("stock", "readonly").objectStore("stock");
+  let totalValue = 0;
+  let totalItemsToday = 0;
+  const today = new Date().toISOString().slice(0,10);
+
+  tx.openCursor().onsuccess = e => {
+    const cursor = e.target.result;
+    if (cursor) {
+      const i = cursor.value;
+      totalValue += i.qty * i.price;
+
+      if (i.dateAdded?.slice(0,10) === today) totalItemsToday++;
+
+      cursor.continue();
+    } else {
+      document.getElementById("stockTotals").textContent = 
+        `Total Items Stocked Today: ${totalItemsToday} | Total Stock Value: ₦${totalValue.toFixed(2)}`;
+    }
+  };
+}
+
+// --- Sales Totals ---
+function updateSalesTotals() {
+  const tx = db.transaction("sales", "readonly").objectStore("sales");
+  let totalSold = 0;
+  let totalAmount = 0;
+
+  tx.openCursor().onsuccess = e => {
+    const cursor = e.target.result;
+    if (cursor) {
+      const s = cursor.value;
+      totalSold += s.qty;
+      totalAmount += s.qty * s.price;
+      cursor.continue();
+    } else {
+      document.getElementById("salesTotals").textContent =
+        `Total Items Sold: ${totalSold} | Total Sales Amount: ₦${totalAmount.toFixed(2)}`;
+    }
+  };
+}
+
+// Call after rendering tables
+function refreshDashboard() {
+  renderStock();
+  renderSales();
+  updateStockTotals();
+  updateSalesTotals();
+}
+  
 // Filter Sales by Date
 document.getElementById("fromDate").addEventListener("change",()=>renderSales(document.getElementById("fromDate").value,document.getElementById("toDate").value));
 document.getElementById("toDate").addEventListener("change",()=>renderSales(document.getElementById("fromDate").value,document.getElementById("toDate").value));
