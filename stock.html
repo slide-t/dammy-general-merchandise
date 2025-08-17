@@ -272,6 +272,177 @@ th {
   <span class="tooltip">Logout</span>
   <i class="fas fa-power-off"></i>
 </button>
+
+<script>
+// --- IndexedDB setup ---
+let db;
+const request = indexedDB.open("StoreDB", 1);
+request.onupgradeneeded = e => {
+  db = e.target.result;
+  if (!db.objectStoreNames.contains("stock")) db.createObjectStore("stock", { keyPath: "barcode" });
+  if (!db.objectStoreNames.contains("sales")) db.createObjectStore("sales", { autoIncrement: true });
+};
+request.onsuccess = e => { db = e.target.result; renderStock(); };
+request.onerror = () => alert("DB error");
+
+// --- Generate 8-character barcode ---
+function generateBarcode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let b = '';
+  for (let i = 0; i < 8; i++) b += chars.charAt(Math.floor(Math.random() * chars.length));
+  return b;
+}
+
+// --- Elements ---
+const addStockBtn = document.getElementById("addStockBtn");
+const itemName = document.getElementById("itemName");
+const itemCategory = document.getElementById("itemCategory");
+const itemQty = document.getElementById("itemQty");
+const itemPrice = document.getElementById("itemPrice");
+
+// --- Spinner CSS ---
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.spinner {
+  border: 3px solid transparent; 
+  border-top: 3px solid red; 
+  border-right: 3px solid green; 
+  border-bottom: 3px solid blue; 
+  border-left: 3px solid yellow; 
+  width: 18px; height: 18px; border-radius: 50%; 
+  display: inline-block; animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+`;
+document.head.appendChild(style);
+
+// --- Add Stock ---
+addStockBtn.addEventListener("click", () => {
+  const name = itemName.value.trim();
+  const category = itemCategory.value.trim();
+  const qty = parseInt(itemQty.value);
+  const price = parseFloat(itemPrice.value);
+
+  if (!name || !category || !qty || !price) { 
+    alert("❌ Please fill all fields"); 
+    return; 
+  }
+
+  // Disable button & show spinner
+  addStockBtn.disabled = true;
+  addStockBtn.innerHTML = `<span class="spinner"></span> Adding...`;
+
+  const barcode = generateBarcode();
+  const dateAdded = new Date().toISOString();
+  const tx = db.transaction("stock", "readwrite").objectStore("stock");
+
+  tx.add({ barcode, name, category, qty, price, dateAdded });
+
+  tx.oncomplete = () => {
+    renderStock();
+    addStockBtn.disabled = false;
+    addStockBtn.textContent = "➕ Add Item";
+
+    // Show confirmation modal
+    showConfirmationModal(name, barcode);
+
+    // Reset input fields after modal is closed
+  };
+
+  tx.onerror = () => {
+    alert("❌ Item already exists or DB error.");
+    addStockBtn.disabled = false;
+    addStockBtn.textContent = "➕ Add Item";
+  };
+});
+
+// --- Confirmation Modal ---
+function showConfirmationModal(name, barcode) {
+  const modal = document.createElement("div");
+  modal.style.position = "fixed";
+  modal.style.top = 0;
+  modal.style.left = 0;
+  modal.style.width = "100%";
+  modal.style.height = "100%";
+  modal.style.background = "rgba(0,0,0,0.4)";
+  modal.style.display = "flex";
+  modal.style.justifyContent = "center";
+  modal.style.alignItems = "center";
+  modal.style.zIndex = 9999;
+
+  const content = document.createElement("div");
+  content.style.background = "#fff";
+  content.style.padding = "30px";
+  content.style.borderRadius = "12px";
+  content.style.textAlign = "center";
+  content.style.minWidth = "300px";
+
+  content.innerHTML = `<h3>✅ Stock Added!</h3>
+                       <p>Item: <b>${name}</b><br>Barcode: <b>${barcode}</b></p>
+                       <button id="modalOkBtn" style="padding:10px 20px;border:none;background:#0a9396;color:#fff;border-radius:8px;cursor:pointer;margin-top:15px;">OK</button>`;
+
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+
+  document.getElementById("modalOkBtn").addEventListener("click", () => {
+    document.body.removeChild(modal);
+    itemName.value = "";
+    itemCategory.value = "";
+    itemQty.value = "";
+    itemPrice.value = "";
+    itemName.focus();
+  });
+}
+
+// --- Render Stock ---
+function renderStock() {
+  const tbody = document.getElementById("stockTable");
+  const alerts = document.getElementById("lowStockAlerts");
+  tbody.innerHTML = "";
+  alerts.innerHTML = "";
+
+  const tx = db.transaction("stock", "readonly").objectStore("stock");
+  tx.openCursor().onsuccess = e => {
+    const cursor = e.target.result;
+    if (cursor) {
+      const i = cursor.value;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${i.name}</td>
+        <td>${i.category}</td>
+        <td>${i.qty}</td>
+        <td>₦${i.price.toFixed(2)}</td>
+        <td><button onclick="deleteStock('${i.barcode}')" style="padding:5px 10px;border:none;background:red;color:#fff;border-radius:6px;cursor:pointer;">Delete</button></td>
+      `;
+      tbody.appendChild(tr);
+
+      if (i.qty <= 5) {
+        const div = document.createElement("div");
+        div.className = "alert-low";
+        div.textContent = `⚠ Low stock: ${i.name} (Qty: ${i.qty})`;
+        alerts.appendChild(div);
+      }
+      cursor.continue();
+    }
+  };
+}
+
+// --- Delete Stock ---
+function deleteStock(barcode) {
+  if (confirm("⚠ Are you sure you want to delete this item?")) {
+    const tx = db.transaction("stock", "readwrite").objectStore("stock");
+    tx.delete(barcode);
+    tx.oncomplete = renderStock;
+  }
+}
+</script>
+
+
+  <!--
   
 <script>
 // --- IndexedDB setup ---
@@ -413,6 +584,7 @@ function renderStock() {
   };
 }
 </script>
+  -->
 <script>
 // --- Staff password ---
 const staffPassword="staff123";
