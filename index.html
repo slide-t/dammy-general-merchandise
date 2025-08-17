@@ -115,7 +115,21 @@ input[type=date]{padding:8px;border-radius:6px;border:1px solid #ccc;width:100%;
     </div>
 
   </div>
-
+</div>
+  <!-- Admin Panel: Devices -->
+<div class="panel">
+  <h2>Manage Devices / Users</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Device ID</th>
+        <th>Last Login</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="deviceTable"></tbody>
+  </table>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -269,7 +283,50 @@ resetTimer();
 document.getElementById("logoutBtn").addEventListener("click", logout);
 </script>
 
+<script>
+// Add or update device in IndexedDB
+function registerDevice(deviceId){
+  const tx = db.transaction("devices", "readwrite").objectStore("devices");
+  tx.put({deviceId, lastLogin: new Date(), disabled: false});
+}
 
+// Render devices in admin panel
+function renderDevices(){
+  const tbody = document.getElementById("deviceTable");
+  tbody.innerHTML = "";
+  const tx = db.transaction("devices","readonly").objectStore("devices");
+  tx.openCursor().onsuccess = e => {
+    const cursor = e.target.result;
+    if(cursor){
+      const dev = cursor.value;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${dev.deviceId}</td>
+        <td>${new Date(dev.lastLogin).toLocaleString()}</td>
+        <td>${dev.disabled ? "Disabled ❌" : "Active ✅"}</td>
+        <td>
+          <button onclick="toggleDevice('${dev.deviceId}',${dev.disabled})">
+            ${dev.disabled ? "Enable" : "Disable"}
+          </button>
+        </td>`;
+      tbody.appendChild(tr);
+      cursor.continue();
+    }
+  }
+}
+
+// Toggle disable
+function toggleDevice(deviceId,currentStatus){
+  const tx = db.transaction("devices","readwrite").objectStore("devices");
+  tx.get(deviceId).onsuccess = e=>{
+    const data = e.target.result;
+    data.disabled = !currentStatus;
+    tx.put(data);
+    renderDevices();
+  }
+}
+  
+</script>
   
 </body>
 </html>
