@@ -1,1 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard</title>
+<style>
+  body{margin:0;font-family:Arial,sans-serif;background:#f4f6f9;}
+  header{background:#001219;color:#fff;padding:15px;text-align:center;font-weight:bold;}
+  .container{max-width:1000px;margin:20px auto;padding:20px;background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.2);}
+  h2{margin-bottom:10px;color:#001219;}
+  input,button,select{padding:10px;margin:5px 0;border-radius:6px;border:1px solid #ccc;width:100%;}
+  button{cursor:pointer;font-weight:bold;background:#0077b6;color:#fff;border:none;}
+  button:hover{background:#023e8a;}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  @media(max-width:700px){.grid-3{grid-template-columns:1fr;}}
+  table{width:100%;border-collapse:collapse;margin-top:15px;}
+  th,td{border:1px solid #ddd;padding:8px;text-align:center;}
+  th{background:#0077b6;color:#fff;}
+  .alert{padding:10px;margin:10px 0;border-radius:6px;font-weight:bold;}
+  .alert-warning{background:#fff3cd;color:#856404;}
+  .alert-danger{background:#f8d7da;color:#721c24;}
+  .panel-btns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px;}
+  .panel-btns button{flex:1;}
+</style>
+</head>
+<body>
 
+<header>🛠 Admin Dashboard</header>
+
+<div class="container">
+
+  <!-- Admin Login Modal -->
+  <section class="card">
+    <h2>Admin Login</h2>
+    <input type="password" id="adminPass" placeholder="Enter admin password">
+    <button id="loginBtn">Login</button>
+    <div id="loginMsg" class="alert" style="display:none;"></div>
+  </section>
+
+  <!-- Admin Panel -->
+  <section id="adminPanel" style="display:none;">
+    <div class="panel-btns">
+      <button id="btnStock">View Stock</button>
+      <button id="btnSales">View Sales</button>
+      <button id="btnStockPage">Open Stock Page</button>
+      <button id="btnSalesPage">Open Sales Page</button>
+    </div>
+
+    <!-- Stock Table -->
+    <div id="stockPanel" style="display:none;">
+      <h2>Stock</h2>
+      <div id="lowStockAlerts"></div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr><th>Barcode</th><th>Name</th><th>Category</th><th>Qty</th><th>Price (₦)</th><th>Value (₦)</th></tr>
+          </thead>
+          <tbody id="stockTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sales Table -->
+    <div id="salesPanel" style="display:none;">
+      <h2>Sales</h2>
+      <div>
+        <label>From: <input type="date" id="fromDate"></label>
+        <label>To: <input type="date" id="toDate"></label>
+        <button id="filterSalesBtn">Filter Sales</button>
+        <button id="downloadPDFBtn">Download PDF</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr><th>Barcode</th><th>Name</th><th>Qty</th><th>Price (₦)</th><th>Total (₦)</th><th>Date</th></tr>
+          </thead>
+          <tbody id="salesTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+let db;
+const request = indexedDB.open("StoreDB",1);
+request.onsuccess = e => { db = e.target.result; };
+request.onerror = ()=>alert("DB error");
+
+// Admin login
+const loginBtn = document.getElementById("loginBtn");
+const adminPass = document.getElementById("adminPass");
+const loginMsg = document.getElementById("loginMsg");
+const adminPanel = document.getElementById("adminPanel");
+const PASSWORD = "admin123"; // change your admin password
+
+loginBtn.addEventListener("click",()=>{
+  if(adminPass.value===PASSWORD){
+    loginMsg.style.display="none";
+    adminPanel.style.display="block";
+  }else{
+    loginMsg.textContent="❌ Wrong password"; loginMsg.style.display="block";
+  }
+});
+
+// Panel Buttons
+document.getElementById("btnStock").addEventListener("click",()=>{showPanel("stock");});
+document.getElementById("btnSales").addEventListener("click",()=>{showPanel("sales");});
+document.getElementById("btnStockPage").addEventListener("click",()=>{window.location.href="stock.html";});
+document.getElementById("btnSalesPage").addEventListener("click",()=>{window.location.href="sales.html";});
+
+function showPanel(p){
+  document.getElementById("stockPanel").style.display = p==="stock"?"block":"none";
+  document.getElementById("salesPanel").style.display = p==="sales"?"block":"none";
+  if(p==="stock") renderStock();
+  if(p==="sales") renderSales();
+}
+
+// Render Stock
+function formatN(n){ return Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function renderStock(){
+  const tbody = document.getElementById("stockTable");
+  const alertsDiv = document.getElementById("lowStockAlerts");
+  tbody.innerHTML = "";
+  alertsDiv.innerHTML = "";
+  const tx = db.transaction("stock","readonly").objectStore("stock");
+  tx.openCursor().onsuccess = e=>{
+    const cursor = e.target.result;
+    if(cursor){
+      const item = cursor.value;
+      const tr = document.createElement("tr");
+      const value = (item.qty||0)*(item.price||0);
+      tr.innerHTML=`<td>${item.barcode}</td><td>${item.name}</td><td>${item.category}</td><td>${item.qty}</td><td>₦${formatN(item.price)}</td><td>₦${formatN(value)}</td>`;
+      tbody.appendChild(tr);
+      if(item.qty<=5){
+        const div = document.createElement("div");
+        div.className="alert "+(item.qty===0?"alert-danger":"alert-warning");
+        div.textContent=`⚠ Low stock: ${item.name} — Qty ${item.qty}`;
+        alertsDiv.appendChild(div);
+      }
+      cursor.continue();
+    }
+  };
+}
+
+// Render Sales
+function renderSales(filterFrom=null,filterTo=null){
+  const tbody = document.getElementById("salesTable");
+  tbody.innerHTML = "";
+  const tx = db.transaction("sales","readonly").objectStore("sales");
+  tx.openCursor().onsuccess = e=>{
+    const cursor = e.target.result;
+    if(cursor){
+      const s = cursor.value;
+      const saleDate = new Date(s.date);
+      if(filterFrom && saleDate<filterFrom){ cursor.continue(); return; }
+      if(filterTo && saleDate>filterTo){ cursor.continue(); return; }
+      const tr = document.createElement("tr");
+      tr.innerHTML=`<td>${s.barcode}</td><td>${s.name}</td><td>${s.qty}</td><td>₦${formatN(s.price)}</td><td>₦${formatN(s.total)}</td><td>${s.date}</td>`;
+      tbody.appendChild(tr);
+      cursor.continue();
+    }
+  };
+}
+
+// Filter sales by date
+document.getElementById("filterSalesBtn").addEventListener("click",()=>{
+  const from = document.getElementById("fromDate").value;
+  const to = document.getElementById("toDate").value;
+  const fromDate = from?new Date(from):null;
+  const toDate = to?new Date(to):null;
+  renderSales(fromDate,toDate);
+});
+
+// Download PDF
+document.getElementById("downloadPDFBtn").addEventListener("click",()=>{
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const table = document.getElementById("salesTable");
+  doc.text("Sales Report",14,14);
+  let y=20;
+  Array.from(table.rows).forEach((row,rowIndex)=>{
+    let rowText = Array.from(row.cells).map(c=>c.textContent).join(" | ");
+    doc.text(rowText,14,y);
+    y+=8;
+    if(y>280){ doc.addPage(); y=20; }
+  });
+  doc.save("sales_report.pdf");
+});
+</script>
+
+</body>
+</html>
