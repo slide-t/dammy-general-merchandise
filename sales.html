@@ -1,1 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales - POS System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 0;
+      background: #f4f6f9;
+      color: #333;
+    }
+    header {
+      background: #001219;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 10px 0;
+    }
+    nav a {
+      text-decoration: none;
+      background: #0077b6;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 6px;
+    }
+    nav a:hover {
+      background: #023e8a;
+    }
+    .container {
+      max-width: 900px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    input, button, select {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      background: #0077b6;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #023e8a;
+    }
+    table {
+      width: 100%;
+      margin-top: 15px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #0077b6;
+      color: white;
+    }
+    .total-box {
+      text-align: right;
+      margin-top: 15px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sales Page</h1>
+  </header>
+  <nav>
+    <a href="admin.html">Admin</a>
+    <a href="stock.html">Stock</a>
+    <a href="sales.html">Sales</a>
+  </nav>
 
+  <div class="container">
+    <h2>Checkout</h2>
+
+    <input type="text" id="barcodeInput" placeholder="Scan or Enter Barcode">
+    <button onclick="addToCart()">Add to Cart</button>
+
+    <table id="cartTable">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Barcode</th>
+          <th>Price</th>
+          <th>Qty</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="total-box">
+      Total: ₦<span id="totalAmount">0</span>
+    </div>
+
+    <button onclick="checkout()">Checkout</button>
+  </div>
+
+  <script>
+    let db;
+    let cart = [];
+
+    // Open IndexedDB
+    const request = indexedDB.open("StoreDB", 1);
+
+    request.onsuccess = function(e) {
+      db = e.target.result;
+      console.log("DB ready for Sales");
+    };
+
+    request.onerror = function() {
+      alert("Error opening database.");
+    };
+
+    function addToCart() {
+      const barcode = document.getElementById("barcodeInput").value.trim();
+      if (!barcode) {
+        alert("Please enter a barcode.");
+        return;
+      }
+
+      const tx = db.transaction("stock", "readonly");
+      const store = tx.objectStore("stock");
+      const req = store.get(barcode);
+
+      req.onsuccess = function(e) {
+        const item = e.target.result;
+        if (item) {
+          const existing = cart.find(c => c.barcode === barcode);
+          if (existing) {
+            existing.qty++;
+          } else {
+            cart.push({ name: item.name, price: item.price, barcode: item.barcode, qty: 1 });
+          }
+          renderCart();
+        } else {
+          alert("Item not found in stock.");
+        }
+      };
+    }
+
+    function renderCart() {
+      const tbody = document.querySelector("#cartTable tbody");
+      tbody.innerHTML = "";
+      let total = 0;
+
+      cart.forEach(c => {
+        const subtotal = c.price * c.qty;
+        total += subtotal;
+        tbody.innerHTML += `
+          <tr>
+            <td>${c.name}</td>
+            <td>${c.barcode}</td>
+            <td>₦${c.price}</td>
+            <td>${c.qty}</td>
+            <td>₦${subtotal}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById("totalAmount").innerText = total;
+    }
+
+    function checkout() {
+      if (cart.length === 0) {
+        alert("Cart is empty.");
+        return;
+      }
+
+      const tx = db.transaction("sales", "readwrite");
+      const store = tx.objectStore("sales");
+
+      const sale = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        items: cart,
+        total: document.getElementById("totalAmount").innerText
+      };
+
+      store.add(sale);
+
+      tx.oncomplete = function() {
+        alert("Sale saved successfully!");
+        cart = [];
+        renderCart();
+      };
+    }
+  </script>
+</body>
+</html>
