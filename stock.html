@@ -84,6 +84,31 @@ th{background:#0077b6;color:#fff;}
 </div>
 
 </div>
+
+<!-- Reusable Login Modal -->
+<div id="loginModal">
+  <div class="modal-content">
+    <h3>Staff Login</h3>
+    <input type="password" id="staffPassword" placeholder="Enter Password">
+    <button class="btn-login" id="staffLoginBtn">Login</button>
+    <p id="loginMsg"></p>
+  </div>
+</div>
+
+<!-- Spinner Overlay -->
+<div id="spinnerOverlay">
+  <div class="spinner">
+    <img src="logo.png" alt="Logo">
+  </div>
+</div>
+
+<!-- Logout Button -->
+<button id="logoutBtn">
+  <span class="tooltip">Logout</span>
+  ⏻
+</button>
+
+  
 <script>
 // --- IndexedDB setup ---
 let db;
