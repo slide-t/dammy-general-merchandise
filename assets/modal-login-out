@@ -3,8 +3,6 @@
 //CSS
 
 
-/* Base */
-body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;color:#222;position:relative;}
 
 /* Reusable Water Transparent Modal */
 #loginModal{
