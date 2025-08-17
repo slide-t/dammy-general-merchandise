@@ -414,6 +414,9 @@ onSnapshot(collection(db, "activeDevices"), (snapshot) => {
     activeDevicesContainer.appendChild(div);
   });
 });
+async function disableDevice(deviceId) {
+  await setDoc(doc(db, "activeDevices", deviceId), { enabled: false }, { merge: true });
+}
       
     </script>
 <!-- Include Font Awesome CDN in your <head> -->
