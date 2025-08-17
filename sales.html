@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales</title>
+<style>
+body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;color:#222;}
+header{background:#001219;color:#fff;padding:16px;text-align:center;font-weight:700;font-size:1.3rem;}
+.container{max-width:1000px;margin:20px auto;padding:20px;}
+.panel{background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 4px 12px rgba(0,0,0,0.08);}
+input,button{padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;}
+button{border:none;cursor:pointer;font-weight:600;}
+.btn-add{background:#0a9396;color:#fff;}
+.btn-add:hover{background:#007f89;}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:0.95rem;}
+th,td{border:1px solid #ddd;padding:8px;text-align:center;}
+th{background:#0077b6;color:#fff;}
+</style>
+</head>
+<body>
+
+<header>💰 Sales Checkout</header>
+<div class="container">
+
+<div class="panel">
+  <h2>Add Item to Cart</h2>
+  <div>
+    <input type="text" id="barcodeInput" placeholder="Scan/Enter Barcode">
+    <input type="number" id="sellQty" placeholder="Quantity" min="1">
+    <button class="btn-add" id="addToCartBtn">Add to Cart</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Cart</h2>
+  <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Item Name</th>
+          <th>Qty</th>
+          <th>Price (₦)</th>
+          <th>Total (₦)</th>
+        </tr>
+      </thead>
+      <tbody id="cartTable"></tbody>
+    </table>
+  </div>
+  <button class="btn-add" id="checkoutBtn">Checkout & Print Receipt</button>
+</div>
+
+</div>
+
+<script>
+let db,cart=[];
+const request=indexedDB.open("StoreDB",1);
+request.onupgradeneeded=e=>{
+  db=e.target.result;
+  if(!db.objectStoreNames.contains("stock")) db.createObjectStore("stock",{keyPath:"barcode"});
+  if(!db.objectStoreNames.contains("sales")) db.createObjectStore("sales",{autoIncrement:true});
+};
+request.onsuccess=e=>{db=e.target.result;};
+
+// Add to cart
+document.getElementById("addToCartBtn").addEventListener("click",()=>{
+  const barcode=document.getElementById("barcodeInput").value.trim();
+  const qty=parseInt(document.getElementById("sellQty").value);
+  if(!barcode||!qty){alert("Enter barcode and qty");return;}
+  const tx=db.transaction("stock","readonly").objectStore("stock");
+  const req=tx.get(barcode);
+  req.onsuccess=e=>{
+    const item=e.target.result;
+    if(!item){alert("Item not found");return;}
+    if(item.qty<qty){alert("Not enough stock");return;}
+    // update cart
+    const exist=cart.find(i=>i.barcode===barcode);
+    if(exist){exist.qty+=qty; exist.total=(exist.qty*exist.price);} 
+    else cart.push({barcode,itemName:item.name,qty,price:item.price,total:qty*item.price,name:item.name});
+    renderCart();
+  };
+});
+
+// Render cart
+function renderCart(){
+  const tbody=document.getElementById("cartTable");
+  tbody.innerHTML="";
+  cart.forEach(i=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i.name}</td><td>${i.qty}</td><td>₦${i.price.toFixed(2)}</td><td>₦${i.total.toFixed(2)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Checkout
+document.getElementById("checkoutBtn").addEventListener("click",()=>{
+  if(cart.length===0){alert("Cart is empty"); return;}
+  const txStock=db.transaction("stock","readwrite").objectStore("stock");
+  const txSales=db.transaction("sales","readwrite").objectStore("sales");
+  cart.forEach(i=>{
+    // update stock
+    const req=txStock.get(i.barcode);
+    req.onsuccess=e=>{
+      const item=e.target.result;
+      item.qty-=i.qty;
+      txStock.put(item);
+    };
+    // add to sales
+    txSales.add({...i,date:new Date()});
+  });
+  txSales.oncomplete=()=>{
+    // print receipt
+    let receipt="🧾 Receipt\n\n";
+    let totalAll=0;
+    cart.forEach(i=>{
+      receipt+=`${i.name} x${i.qty} @₦${i.price.toFixed(2)} = ₦${i.total.toFixed(2)}\n`;
+      totalAll+=i.total;
+    });
+    receipt+=`\nTotal: ₦${totalAll.toFixed(2)}`;
+    const w=window.open(); w.document.write("<pre>"+receipt+"</pre>"); w.print(); w.close();
+    cart=[]; renderCart();
+  };
+});
+</script>
+
+</body>
+</html>
