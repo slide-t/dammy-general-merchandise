@@ -215,5 +215,25 @@ function exportTablePDF(tableId,title){
   doc.save(`${title}.pdf`);
 }
 </script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js')
+    .then(reg => {
+      console.log('Service Worker registered', reg);
+
+      reg.onupdatefound = () => {
+        const installingWorker = reg.installing;
+        installingWorker.onstatechange = () => {
+          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // New update available
+            console.log('New content available, will use when all tabs are closed.');
+          }
+        };
+      };
+    })
+    .catch(err => console.error('Service Worker registration failed:', err));
+}
+</script>
+  
 </body>
 </html>
