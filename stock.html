@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Management</title>
+<style>
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;color:#222;}
+  header{background:#001219;color:#fff;padding:16px;text-align:center;font-weight:700;font-size:1.3rem;}
+  .container{max-width:980px;margin:20px auto;padding:16px;}
+  .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 6px 18px rgba(0,0,0,.06);}
+  h2{margin-bottom:12px;color:#001219;}
+  input, select, button{width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;font-size:1rem;}
+  button{font-weight:700;cursor:pointer;border:none;}
+  .btn-primary{background:#0a9396;color:#fff;}
+  .btn-primary:hover{background:#007f89;}
+  .btn-warning{background:#ffb703;color:#000;}
+  .btn-warning:hover{background:#fb8500;}
+  .muted{color:#6b7c85;font-size:.92rem;}
+  table{width:100%;border-collapse:collapse;margin-top:12px;}
+  th,td{border:1px solid #ddd;padding:8px;text-align:center;}
+  th{background:#0077b6;color:#fff;}
+  .alert-low{background:#fff3cd;color:#7a5d00;padding:8px 12px;border-radius:6px;margin-bottom:6px;font-weight:bold;}
+</style>
+</head>
+<body>
+<header>📦 Stock Management</header>
+<div class="container">
+
+  <section class="card">
+    <h2>Add Item</h2>
+    <form id="addForm" autocomplete="off">
+      <label>Category</label>
+      <select id="category" required>
+        <option value="">— Select —</option>
+        <option>Beverages</option><option>Bakery</option><option>Canned Goods</option>
+        <option>Dairy</option><option>Frozen Foods</option><option>Meat & Poultry</option>
+        <option>Produce</option><option>Snacks</option><option>Household</option>
+        <option>Personal Care</option><option>Spices & Seasoning</option>
+        <option>Grains & Cereals</option><option>Oils & Condiments</option>
+      </select>
+
+      <label>Item Name</label>
+      <input id="itemName" type="text" required placeholder="e.g., Coca-Cola 50cl">
+
+      <label>Price (₦)</label>
+      <input id="itemPrice" type="number" min="0" step="0.01" required placeholder="0.00">
+
+      <label>Quantity</label>
+      <input id="itemQty" type="number" min="1" value="1" required>
+
+      <button type="submit" class="btn-primary">➕ Add Item</button>
+      <p id="addMsg" class="muted"></p>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Inventory</h2>
+    <div id="lowStockAlerts"></div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Barcode</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Qty</th>
+            <th>Price (₦)</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script>
+let db;
+const request=indexedDB.open("StoreDB",1);
+request.onupgradeneeded=e=>{
+  db=e.target.result;
+  if(!db.objectStoreNames.contains("stock")) db.createObjectStore("stock",{keyPath:"barcode"});
+};
+request.onsuccess=e=>{db=e.target.result; renderInventory();};
+request.onerror=()=>alert("DB error");
+
+function genBarcode(){
+  const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code="";
+  for(let i=0;i<8;i++) code+=chars[Math.floor(Math.random()*chars.length)];
+  return code;
+}
+
+const addForm=document.getElementById("addForm");
+const addMsg=document.getElementById("addMsg");
+
+addForm.addEventListener("submit",e=>{
+  e.preventDefault();
+  const category=document.getElementById("category").value.trim();
+  const name=document.getElementById("itemName").value.trim();
+  const price=parseFloat(document.getElementById("itemPrice").value);
+  const qty=parseInt(document.getElementById("itemQty").value,10);
+
+  if(!category||!name||isNaN(price)||price<0||qty<1){ addMsg.textContent="Fill all fields correctly"; return;}
+
+  const barcode=genBarcode();
+  const tx=db.transaction("stock","readwrite").objectStore("stock");
+  tx.add({barcode,name,category,price,qty});
+  tx.oncomplete=()=>{ addMsg.textContent=`✅ Added ${name}`; addForm.reset(); renderInventory();}
+});
+
+function renderInventory(){
+  const tbody=document.getElementById("inventoryTable");
+  const alerts=document.getElementById("lowStockAlerts");
+  tbody.innerHTML=""; alerts.innerHTML="";
+  const tx=db.transaction("stock","readonly").objectStore("stock");
+  tx.openCursor().onsuccess=e=>{
+    const cursor=e.target.result;
+    if(cursor){
+      const i=cursor.value;
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${i.barcode}</td><td>${i.name}</td><td>${i.category}</td><td>${i.qty}</td><td>₦${i.price.toFixed(2)}</td>`;
+      tbody.appendChild(tr);
+      if(i.qty<=5){
+        const div=document.createElement("div");
+        div.className="alert-low";
+        div.textContent=`⚠ Low stock: ${i.name} (Qty: ${i.qty})`;
+        alerts.appendChild(div);
+      }
+      cursor.continue();
+    }
+  };
+}
+</script>
+</body>
+</html>
