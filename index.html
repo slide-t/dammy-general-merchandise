@@ -158,7 +158,31 @@ input[type=date] {
   100% { transform: rotateX(0deg); opacity: 1; }
 }
 
-/* Footer Right Links */
+/* Footer Base */
+.footer {
+  background: #001219;
+  color: #fff;
+  padding: 15px 20px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.footer-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transform: rotateX(-90deg);
+  animation: flipIn 0.8s forwards ease-out;
+}
+
+/* Flip-in Animation */
+@keyframes flipIn {
+  0% { transform: rotateX(-90deg); opacity: 0; }
+  100% { transform: rotateX(0deg); opacity: 1; }
+}
+
+/* Footer Right Icons */
 .footer-right {
   display: flex;
   gap: 20px;
@@ -166,9 +190,10 @@ input[type=date] {
 
 .footer-link {
   color: #ffb703;
-  text-decoration: none;
-  font-weight: 600;
+  font-size: 1.3rem;
   transition: transform 0.5s ease;
+  display: flex;
+  align-items: center;
 }
 
 /* Zoom animation */
@@ -452,16 +477,25 @@ function toggleDevice(deviceId,currentStatus){
 }
   
 </script>
-  <footer class="footer">
+<!-- Include Font Awesome CDN in your <head> -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<footer class="footer">
   <div class="footer-container">
     <div class="footer-left">
       &copy; 2025 SlideTeck
     </div>
     <div class="footer-right">
-      <a href="https://wa.me/2349131697494" target="_blank" class="footer-link">WhatsApp</a>
-      <a href="mailto:info@slideteck.com" class="footer-link">Email</a>
+      <a href="https://wa.me/2349131697494" target="_blank" class="footer-link">
+        <i class="fab fa-whatsapp"></i>
+      </a>
+      <a href="mailto:info@slideteck.com" class="footer-link">
+        <i class="fas fa-envelope"></i>
+      </a>
     </div>
   </div>
-  </footer>
+</footer>
+
+    
 </body>
 </html>
