@@ -374,177 +374,30 @@ function logout(){
 
 
 
-  <!--
+  
 <script>
-// --- IndexedDB setup ---
-let db;
-const request = indexedDB.open("StoreDB", 1);
-request.onupgradeneeded = e => {
-  db = e.target.result;
-  if (!db.objectStoreNames.contains("stock")) db.createObjectStore("stock", { keyPath: "barcode" });
-  if (!db.objectStoreNames.contains("sales")) db.createObjectStore("sales", { autoIncrement: true });
-};
-request.onsuccess = e => { db = e.target.result; renderStock(); };
-request.onerror = () => alert("DB error");
 
-// --- Generate 8-character barcode ---
-function generateBarcode() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let b = '';
-  for (let i = 0; i < 8; i++) b += chars.charAt(Math.floor(Math.random() * chars.length));
-  return b;
-}
+const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
+localStorage.setItem("deviceId", deviceId);
 
-// --- Elements ---
-const addStockBtn = document.getElementById("addStockBtn");
-const itemName = document.getElementById("itemName");
-const itemCategory = document.getElementById("itemCategory");
-const itemQty = document.getElementById("itemQty");
-const itemPrice = document.getElementById("itemPrice");
-
-// --- Spinner & Button Text ---
-const btnText = document.createElement("span");
-btnText.textContent = "➕ Add Item";
-addStockBtn.innerHTML = '';
-addStockBtn.appendChild(btnText);
-
-const btnSpinner = document.createElement("span");
-btnSpinner.className = "spinner hidden";
-addStockBtn.appendChild(btnSpinner);
-
-// --- Add Stock ---
-addStockBtn.addEventListener("click", () => {
-  const name = itemName.value.trim();
-  const category = itemCategory.value.trim();
-  const qty = parseInt(itemQty.value);
-  const price = parseFloat(itemPrice.value);
-
-  if (!name || !category || !qty || !price) { alert("❌ Please fill all fields"); return; }
-
-  // Disable button & show spinner
-  addStockBtn.disabled = true;
-  btnText.textContent = "Adding...";
-  btnSpinner.classList.remove("hidden");
-
-  const barcode = generateBarcode();
-  const tx = db.transaction("stock", "readwrite").objectStore("stock");
-  tx.add({ barcode, name, category, qty, price });
-
-  tx.oncomplete = () => {
-    renderStock();
-
-    // Show success popup modal
-    setTimeout(() => {
-      if (confirm(`✅ Stock added successfully!\nItem: ${name}\nBarcode: ${barcode}`)) {
-        // Reset form
-        itemName.value = "";
-        itemCategory.value = "";
-        itemQty.value = "";
-        itemPrice.value = "";
-        // Enable button
-        addStockBtn.disabled = false;
-        btnText.textContent = "➕ Add Item";
-        btnSpinner.classList.add("hidden");
-        itemName.focus();
-      }
-    }, 300);
-  };
-
-  tx.onerror = () => {
-    alert("❌ Item already exists or DB error");
-    addStockBtn.disabled = false;
-    btnText.textContent = "➕ Add Item";
-    btnSpinner.classList.add("hidden");
-  };
-});
-
-// --- Render Stock ---
-function renderStock() {
-  const tbody = document.getElementById("stockTable");
-  const alerts = document.getElementById("lowStockAlerts");
-  tbody.innerHTML = "";
-  alerts.innerHTML = "";
-
-  const tx = db.transaction("stock", "readonly").objectStore("stock");
-  tx.openCursor().onsuccess = e => {
-    const cursor = e.target.result;
-    if (cursor) {
-      const i = cursor.value;
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${i.name}</td><td>${i.category}</td><td>${i.qty}</td><td>₦${i.price.toFixed(2)}</td>`;
-      tbody.appendChild(tr);
-
-      if (i.qty <= 5) {
-        const div = document.createElement("div");
-        div.className = "alert-low";
-        div.textContent = `⚠ Low stock: ${i.name} (Qty: ${i.qty})`;
-        alerts.appendChild(div);
-      }
-
-      cursor.continue();
+// Check if device is disabled
+function checkDeviceDisabled(){
+  const tx = db.transaction("devices","readonly").objectStore("devices");
+  tx.get(deviceId).onsuccess = e=>{
+    const dev = e.target.result;
+    if(dev && dev.disabled){
+      alert("⚠ Your device has been disabled by admin!");
+      window.location.href = "admin.html"; // redirect to login page
     }
-  };
+  }
 }
+
+// Call on page load
+checkDeviceDisabled();
+
+  
 </script>
 
-
- <!-- 
-<script>
-let db;
-const request=indexedDB.open("StoreDB",1);
-request.onupgradeneeded=e=>{
-  db=e.target.result;
-  if(!db.objectStoreNames.contains("stock")) db.createObjectStore("stock",{keyPath:"barcode"});
-  if(!db.objectStoreNames.contains("sales")) db.createObjectStore("sales",{autoIncrement:true});
-};
-request.onsuccess=e=>{db=e.target.result; renderStock();};
-request.onerror=()=>alert("DB error");
-
-// Generate barcode
-function generateBarcode(){ 
-  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let b=''; for(let i=0;i<8;i++) b+=chars.charAt(Math.floor(Math.random()*chars.length));
-  return b;
-}
-
-// Add stock
-document.getElementById("addStockBtn").addEventListener("click",()=>{
-  const name=document.getElementById("itemName").value.trim();
-  const category=document.getElementById("itemCategory").value.trim();
-  const qty=parseInt(document.getElementById("itemQty").value);
-  const price=parseFloat(document.getElementById("itemPrice").value);
-  if(!name||!category||!qty||!price){alert("Please fill all fields"); return;}
-  const barcode=generateBarcode();
-  const tx=db.transaction("stock","readwrite").objectStore("stock");
-  tx.add({barcode,name,category,qty,price});
-  tx.oncomplete=()=>{ renderStock(); document.getElementById("itemName").value="";document.getElementById("itemCategory").value="";document.getElementById("itemQty").value="";document.getElementById("itemPrice").value="";};
-  tx.onerror=()=>alert("Item exists");
-});
-
-// Render stock
-function renderStock(){
-  const tbody=document.getElementById("stockTable");
-  const alerts=document.getElementById("lowStockAlerts");
-  tbody.innerHTML=""; alerts.innerHTML="";
-  const tx=db.transaction("stock","readonly").objectStore("stock");
-  tx.openCursor().onsuccess=e=>{
-    const cursor=e.target.result;
-    if(cursor){
-      const i=cursor.value;
-      const tr=document.createElement("tr");
-      tr.innerHTML=`<td>${i.name}</td><td>${i.category}</td><td>${i.qty}</td><td>₦${i.price.toFixed(2)}</td>`;
-      tbody.appendChild(tr);
-      if(i.qty<=5){
-        const div=document.createElement("div");
-        div.className="alert-low";
-        div.textContent=`⚠ Low stock: ${i.name} (Qty: ${i.qty})`;
-        alerts.appendChild(div);
-      }
-      cursor.continue();
-    }
-  };
-}
-</script>
--->
+        
 </body>
 </html>
