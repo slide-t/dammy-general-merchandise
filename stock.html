@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Management</title>
+<style>
+body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;color:#222;}
+header{background:#001219;color:#fff;padding:16px;text-align:center;font-weight:700;font-size:1.3rem;}
+.container{max-width:1000px;margin:20px auto;padding:20px;}
+.panel{background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 4px 12px rgba(0,0,0,0.08);}
+.flex-between{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:15px;}
+@media(max-width:700px){.grid-2{grid-template-columns:1fr;}}
+input,select{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;}
+button{padding:10px 16px;border:none;border-radius:6px;cursor:pointer;font-weight:600;}
+.btn-add{background:#0a9396;color:#fff;}
+.btn-add:hover{background:#007f89;}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:0.95rem;}
+th,td{border:1px solid #ddd;padding:8px;text-align:center;}
+th{background:#0077b6;color:#fff;}
+.alert-low{background:#fff3cd;color:#7a5d00;padding:8px 12px;border-radius:6px;margin-bottom:6px;font-weight:bold;}
+</style>
+</head>
+<body>
+
+<header>📦 Stock Management</header>
+<div class="container">
+
+<div class="panel">
+  <h2>Add New Stock</h2>
+  <div class="grid-2">
+    <input type="text" id="itemName" placeholder="Item Name">
+    <input type="text" id="itemCategory" placeholder="Category">
+    <input type="number" id="itemQty" placeholder="Quantity" min="1">
+    <input type="number" id="itemPrice" placeholder="Price (₦)" min="1" step="0.01">
+  </div>
+  <button class="btn-add" id="addStockBtn">Add Stock</button>
+</div>
+
+<div class="panel">
+  <h2>Stock List</h2>
+  <div id="lowStockAlerts"></div>
+  <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Qty</th>
+          <th>Price (₦)</th>
+        </tr>
+      </thead>
+      <tbody id="stockTable"></tbody>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<script>
+let db;
+const request=indexedDB.open("StoreDB",1);
+request.onupgradeneeded=e=>{
+  db=e.target.result;
+  if(!db.objectStoreNames.contains("stock")) db.createObjectStore("stock",{keyPath:"barcode"});
+  if(!db.objectStoreNames.contains("sales")) db.createObjectStore("sales",{autoIncrement:true});
+};
+request.onsuccess=e=>{db=e.target.result; renderStock();};
+request.onerror=()=>alert("DB error");
+
+// Generate barcode
+function generateBarcode(){ 
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let b=''; for(let i=0;i<8;i++) b+=chars.charAt(Math.floor(Math.random()*chars.length));
+  return b;
+}
+
+// Add stock
+document.getElementById("addStockBtn").addEventListener("click",()=>{
+  const name=document.getElementById("itemName").value.trim();
+  const category=document.getElementById("itemCategory").value.trim();
+  const qty=parseInt(document.getElementById("itemQty").value);
+  const price=parseFloat(document.getElementById("itemPrice").value);
+  if(!name||!category||!qty||!price){alert("Please fill all fields"); return;}
+  const barcode=generateBarcode();
+  const tx=db.transaction("stock","readwrite").objectStore("stock");
+  tx.add({barcode,name,category,qty,price});
+  tx.oncomplete=()=>{ renderStock(); document.getElementById("itemName").value="";document.getElementById("itemCategory").value="";document.getElementById("itemQty").value="";document.getElementById("itemPrice").value="";};
+  tx.onerror=()=>alert("Item exists");
+});
+
+// Render stock
+function renderStock(){
+  const tbody=document.getElementById("stockTable");
+  const alerts=document.getElementById("lowStockAlerts");
+  tbody.innerHTML=""; alerts.innerHTML="";
+  const tx=db.transaction("stock","readonly").objectStore("stock");
+  tx.openCursor().onsuccess=e=>{
+    const cursor=e.target.result;
+    if(cursor){
+      const i=cursor.value;
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${i.name}</td><td>${i.category}</td><td>${i.qty}</td><td>₦${i.price.toFixed(2)}</td>`;
+      tbody.appendChild(tr);
+      if(i.qty<=5){
+        const div=document.createElement("div");
+        div.className="alert-low";
+        div.textContent=`⚠ Low stock: ${i.name} (Qty: ${i.qty})`;
+        alerts.appendChild(div);
+      }
+      cursor.continue();
+    }
+  };
+}
+</script>
+
+</body>
+</html>
