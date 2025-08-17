@@ -6,21 +6,127 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stock Management</title>
 <style>
-body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;color:#222;}
-header{background:#001219;color:#fff;padding:16px;text-align:center;font-weight:700;font-size:1.3rem;}
-.container{max-width:1000px;margin:20px auto;padding:20px;}
-.panel{background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 4px 12px rgba(0,0,0,0.08);}
-.flex-between{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:15px;}
-@media(max-width:700px){.grid-2{grid-template-columns:1fr;}}
-input,select{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;}
-button{padding:10px 16px;border:none;border-radius:6px;cursor:pointer;font-weight:600;}
-.btn-add{background:#0a9396;color:#fff;}
-.btn-add:hover{background:#007f89;}
-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:0.95rem;}
-th,td{border:1px solid #ddd;padding:8px;text-align:center;}
-th{background:#0077b6;color:#fff;}
-.alert-low{background:#fff3cd;color:#7a5d00;padding:8px 12px;border-radius:6px;margin-bottom:6px;font-weight:bold;}
+/* Base */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f4f6f9;
+  color: #222;
+}
+
+header {
+  background: #001219;
+  color: #fff;
+  padding: 16px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 20px;
+}
+
+/* Panel */
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Flex utilities */
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+@media (max-width: 700px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Form inputs */
+input,
+select {
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+/* Buttons */
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-add {
+  background: #0a9396;
+  color: #fff;
+}
+
+.btn-add:hover {
+  background: #007f89;
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.95rem;
+}
+
+/* Scrollable table container */
+.table-scroll {
+  max-height: 300px; /* adjust as needed */
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+/* Table cells */
+th,
+td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+/* Sticky header */
+th {
+  background: #0077b6;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Low stock alert */
+.alert-low {
+  background: #fff3cd;
+  color: #7a5d00;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
 
   /* Spinner inside button */
 .spinner {
@@ -124,11 +230,12 @@ th{background:#0077b6;color:#fff;}
 </div>
   
 </div>
-
 <div class="panel">
   <h2>Stock List</h2>
   <div id="lowStockAlerts"></div>
-  <div style="overflow-x:auto;">
+  
+  <!-- Scrollable table container -->
+  <div class="table-scroll">
     <table>
       <thead>
         <tr>
@@ -141,8 +248,6 @@ th{background:#0077b6;color:#fff;}
       <tbody id="stockTable"></tbody>
     </table>
   </div>
-</div>
-
 </div>
 
 <!-- Reusable Login Modal -->
