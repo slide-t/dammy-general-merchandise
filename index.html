@@ -240,7 +240,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 // --- Configuration ---
-const isAdminPage = window.location.href.includes("admin"); // detect admin page
+const isAdminPage = window.location.href.includes("index"); // detect admin page
 const logoutTime = isAdminPage ? 10 * 60 * 1000 : 5 * 60 * 1000; // 10 min for admin, 5 min for staff
 let inactivityTimer;
 
@@ -248,7 +248,7 @@ let inactivityTimer;
 function logout() {
   alert("⚠ You have been logged out due to inactivity.");
   // Redirect to admin access page (login modal page)
-  window.location.href = "admin.html"; 
+  window.location.href = "index.html"; 
 }
 
 // --- Reset Timer ---
