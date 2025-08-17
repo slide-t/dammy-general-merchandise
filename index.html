@@ -235,6 +235,41 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.error('Service Worker registration failed:', err));
 }
 </script>
+<!-- Logout Button -->
+<button id="logoutBtn" style="position:fixed;top:10px;right:10px;padding:8px 14px;background:#ff5252;color:#fff;border:none;border-radius:6px;cursor:pointer;z-index:9999;">Logout</button>
+
+<script>
+// --- Configuration ---
+const isAdminPage = window.location.href.includes("admin"); // detect admin page
+const logoutTime = isAdminPage ? 10 * 60 * 1000 : 5 * 60 * 1000; // 10 min for admin, 5 min for staff
+let inactivityTimer;
+
+// --- Logout Function ---
+function logout() {
+  alert("⚠ You have been logged out due to inactivity.");
+  // Redirect to admin access page (login modal page)
+  window.location.href = "admin.html"; 
+}
+
+// --- Reset Timer ---
+function resetTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(logout, logoutTime);
+}
+
+// --- Monitor Activity ---
+['mousemove','keydown','scroll','touchstart'].forEach(evt => {
+  document.addEventListener(evt, resetTimer);
+});
+
+// --- Initial Timer Start ---
+resetTimer();
+
+// --- Logout Button Click ---
+document.getElementById("logoutBtn").addEventListener("click", logout);
+</script>
+
+
   
 </body>
 </html>
