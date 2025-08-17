@@ -403,20 +403,41 @@ function toggleDevice(deviceId,currentStatus){
 </script>
 
     <script>
-const activeDevicesContainer = document.getElementById("deviceList");
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import { getFirestore, collection, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-onSnapshot(collection(db, "activeDevices"), (snapshot) => {
-  activeDevicesContainer.innerHTML = "";
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-    const div = document.createElement("div");
-    div.textContent = `${data.user} - ${data.page} - ${data.lastActive.toDate().toLocaleString()} - ${data.enabled ? "Active" : "Disabled"}`;
-    activeDevicesContainer.appendChild(div);
+  const firebaseConfig = {
+    apiKey: "AIzaSyBDAvOznQoQnHhG59eCIJ1X3IHne_Ceudg",
+    authDomain: "dammymerchpwa.firebaseapp.com",
+    projectId: "dammymerchpwa",
+    storageBucket: "dammymerchpwa.firebasestorage.app",
+    messagingSenderId: "328994755570",
+    appId: "1:328994755570:web:d0ae2c7a95dee3213cd16b",
+    measurementId: "G-FY347NE91X"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const activeDevicesContainer = document.getElementById("deviceList");
+
+  onSnapshot(collection(db, "activeDevices"), (snapshot) => {
+    activeDevicesContainer.innerHTML = "";
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const div = document.createElement("div");
+      div.textContent = `${data.user} - ${data.page} - ${data.lastActive.toDate().toLocaleString()} - ${data.enabled ? "Active" : "Disabled"}`;
+      activeDevicesContainer.appendChild(div);
+    });
   });
-});
-async function disableDevice(deviceId) {
-  await setDoc(doc(db, "activeDevices", deviceId), { enabled: false }, { merge: true });
-}
+
+  async function disableDevice(deviceId) {
+    await setDoc(doc(db, "activeDevices", deviceId), { enabled: false }, { merge: true });
+  }
+
+  window.disableDevice = disableDevice; // expose globally if needed
+</script>
       
     </script>
 <!-- Include Font Awesome CDN in your <head> -->
