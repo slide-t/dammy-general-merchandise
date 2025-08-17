@@ -23,18 +23,116 @@ header{background:#001219;color:#fff;padding:16px;text-align:center;font-weight:
 #loginMsg{margin-top:5px;color:red;font-weight:600;}
 
 /* Panels */
-.panel{background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 4px 12px rgba(0,0,0,0.08);}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:15px;}
-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:0.95rem;}
-th,td{border:1px solid #ddd;padding:8px;text-align:center;}
-th{background:#0077b6;color:#fff;}
-.alert-low{background:#fff3cd;color:#7a5d00;padding:8px 12px;border-radius:6px;margin-bottom:6px;font-weight:bold;}
-@media(max-width:700px){.grid-2{grid-template-columns:1fr;}}
-.flex-between{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-.btn-export{background:#0a9396;color:#fff;padding:8px 14px;border:none;border-radius:6px;cursor:pointer;}
-.btn-export:hover{background:#007f89;}
-label{display:block;font-weight:600;margin-bottom:4px;color:#001219;}
-input[type=date]{padding:8px;border-radius:6px;border:1px solid #ccc;width:100%;}
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Grid inside panel */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+/* Table wrapper for scrollable content */
+.panel table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.95rem;
+}
+
+/* Make tbody scrollable while keeping thead sticky */
+.panel table thead th {
+  position: sticky;
+  top: 0;
+  background: #0077b6;
+  color: #fff;
+  z-index: 2;
+}
+
+.panel .table-container {
+  max-height: 300px;   /* Adjust scroll height */
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+/* Table cells */
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+/* Alternate row colors */
+.panel tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+/* Low stock alert */
+.alert-low {
+  background: #fff3cd;
+  color: #7a5d00;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+/* Responsive */
+@media(max-width:700px) {
+  .grid-2 {
+    grid-template-columns:1fr;
+  }
+  .panel .table-container {
+    max-height: 200px;
+  }
+  th, td {
+    font-size: 0.8rem;
+    padding: 6px;
+  }
+}
+
+/* Buttons & labels */
+.flex-between {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+.btn-export {
+  background: #0a9396;
+  color: #fff;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-export:hover {
+  background: #007f89;
+}
+
+label {
+  display:block;
+  font-weight:600;
+  margin-bottom:4px;
+  color:#001219;
+}
+
+input[type=date] {
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ccc;
+  width:100%;
+}
+
 </style>
 </head>
 <body>
@@ -57,8 +155,40 @@ input[type=date]{padding:8px;border-radius:6px;border:1px solid #ccc;width:100%;
 
   <!-- Dashboard Panels -->
   <div id="dashboard" style="display:none;">
+<!-- Stock Panel -->
+<div class="panel">
+  <div class="flex-between">
+    <h2>Stock Overview</h2>
+    <button class="btn-export" id="exportStockPDF">Export PDF</button>
+  </div>
+  <div id="lowStockAlerts"></div>
+  <div class="table-container">
+    <table>
+      <thead> ... </thead>
+      <tbody id="stockTable"></tbody>
+    </table>
+  </div>
+</div>
 
-    <!-- Stock Panel -->
+<!-- Sales Panel -->
+<div class="panel">
+  <div class="flex-between">
+    <h2>Sales Report</h2>
+    <button class="btn-export" id="exportSalesPDF">Export PDF</button>
+  </div>
+  <div class="grid-2"> ... </div>
+  <div class="table-container">
+    <table>
+      <thead> ... </thead>
+      <tbody id="salesTable"></tbody>
+    </table>
+  </div>
+</div>
+   
+    
+    
+    
+    <!-- Stock Panel --
     <div class="panel">
       <div class="flex-between">
         <h2>Stock Overview</h2>
@@ -81,7 +211,7 @@ input[type=date]{padding:8px;border-radius:6px;border:1px solid #ccc;width:100%;
       </div>
     </div>
 
-    <!-- Sales Panel -->
+    <!-- Sales Panel --
     <div class="panel">
       <div class="flex-between">
         <h2>Sales Report</h2>
