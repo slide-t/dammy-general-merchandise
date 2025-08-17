@@ -146,6 +146,64 @@ document.getElementById("checkoutBtn").addEventListener("click",()=>{
   };
 });
 </script>
+<script>
+// --- Staff password ---
+const staffPassword="staff123";
+
+// --- IndexedDB or other initialization here if needed ---
+
+// --- Login Modal ---
+const loginModal=document.getElementById("loginModal");
+const staffLoginBtn=document.getElementById("staffLoginBtn");
+const staffPasswordInput=document.getElementById("staffPassword");
+const loginMsg=document.getElementById("loginMsg");
+const spinnerOverlay=document.getElementById("spinnerOverlay");
+
+staffLoginBtn.addEventListener("click",()=>{
+  const val=staffPasswordInput.value.trim();
+  if(val===staffPassword){
+    loginMsg.textContent="";
+    // Show spinner overlay
+    spinnerOverlay.style.display="flex";
+    loginModal.style.display="none";
+    // Simulate loading 5 seconds
+    setTimeout(()=>{
+      spinnerOverlay.style.display="none";
+      // Here load the page content / enable full page
+      alert("✅ Login successful! Page ready.");
+    },5000);
+  }else{
+    loginMsg.textContent="❌ Incorrect password";
+  }
+});
+
+// --- Logout Button ---
+const logoutBtn=document.getElementById("logoutBtn");
+const tooltip=logoutBtn.querySelector(".tooltip");
+
+logoutBtn.addEventListener("click",logout);
+
+// Show tooltip and zoom effect every 10s
+setInterval(()=>{
+  logoutBtn.classList.add("showTooltip");
+  setTimeout(()=>logoutBtn.classList.remove("showTooltip"),4000);
+},10000);
+
+// --- Auto logout ---
+let inactivityTimer;
+function resetTimer(){
+  clearTimeout(inactivityTimer);
+  inactivityTimer=setTimeout(logout,5*60*1000); // 5 min staff auto logout
+}
+['mousemove','keydown','scroll','touchstart'].forEach(evt=>document.addEventListener(evt,resetTimer));
+resetTimer();
+
+// --- Logout function ---
+function logout(){
+  alert("⚠ You are logged out!");
+  window.location.href="index.html"; // redirect to login modal
+}
+</script>
 
 </body>
 </html>
