@@ -144,82 +144,67 @@ th{background:#0077b6;color:#fff;}
   <span class="tooltip">Logout</span>
   <i class="fas fa-power-off"></i>
 </button>
-  
+  <script>
+// =====================
+// Checkout functionality
+// =====================
+document.getElementById("checkoutBtn")?.addEventListener("click", () => {
+    const table = document.getElementById("salesTable");
+    let rows = table.querySelectorAll("tbody tr");
 
+    if (rows.length === 0) {
+        alert("No items to checkout.");
+        return;
+    }
 
-  
+    let total = 0;
+    let summary = "Checkout Summary:\n\n";
 
-  
-<script>
-let db,cart=[];
-const request=indexedDB.open("StoreDB",1);
-request.onupgradeneeded=e=>{
-  db=e.target.result;
-  if(!db.objectStoreNames.contains("stock")) db.createObjectStore("stock",{keyPath:"barcode"});
-  if(!db.objectStoreNames.contains("sales")) db.createObjectStore("sales",{autoIncrement:true});
-};
-request.onsuccess=e=>{db=e.target.result;};
+    rows.forEach(row => {
+        const name = row.cells[0].textContent;
+        const qty = parseInt(row.cells[1].textContent);
+        const price = parseFloat(row.cells[2].textContent);
+        const amount = parseFloat(row.cells[3].textContent);
 
-// Add to cart
-document.getElementById("addToCartBtn").addEventListener("click",()=>{
-  const barcode=document.getElementById("barcodeInput").value.trim();
-  const qty=parseInt(document.getElementById("sellQty").value);
-  if(!barcode||!qty){alert("Enter barcode and qty");return;}
-  const tx=db.transaction("stock","readonly").objectStore("stock");
-  const req=tx.get(barcode);
-  req.onsuccess=e=>{
-    const item=e.target.result;
-    if(!item){alert("Item not found");return;}
-    if(item.qty<qty){alert("Not enough stock");return;}
-    // update cart
-    const exist=cart.find(i=>i.barcode===barcode);
-    if(exist){exist.qty+=qty; exist.total=(exist.qty*exist.price);} 
-    else cart.push({barcode,itemName:item.name,qty,price:item.price,total:qty*item.price,name:item.name});
-    renderCart();
-  };
+        total += amount;
+        summary += `${name} - Qty: ${qty}, ₦${price.toFixed(2)} each, Total: ₦${amount.toFixed(2)}\n`;
+    });
+
+    summary += `\nGrand Total: ₦${total.toFixed(2)}`;
+
+    alert(summary); // later you can replace with modal or invoice popup
 });
 
-// Render cart
-function renderCart(){
-  const tbody=document.getElementById("cartTable");
-  tbody.innerHTML="";
-  cart.forEach(i=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${i.name}</td><td>${i.qty}</td><td>₦${i.price.toFixed(2)}</td><td>₦${i.total.toFixed(2)}</td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-// Checkout
-document.getElementById("checkoutBtn").addEventListener("click",()=>{
-  if(cart.length===0){alert("Cart is empty"); return;}
-  const txStock=db.transaction("stock","readwrite").objectStore("stock");
-  const txSales=db.transaction("sales","readwrite").objectStore("sales");
-  cart.forEach(i=>{
-    // update stock
-    const req=txStock.get(i.barcode);
-    req.onsuccess=e=>{
-      const item=e.target.result;
-      item.qty-=i.qty;
-      txStock.put(item);
-    };
-    // add to sales
-    txSales.add({...i,date:new Date()});
-  });
-  txSales.oncomplete=()=>{
-    // print receipt
-    let receipt="🧾 Receipt\n\n";
-    let totalAll=0;
-    cart.forEach(i=>{
-      receipt+=`${i.name} x${i.qty} @₦${i.price.toFixed(2)} = ₦${i.total.toFixed(2)}\n`;
-      totalAll+=i.total;
-    });
-    receipt+=`\nTotal: ₦${totalAll.toFixed(2)}`;
-    const w=window.open(); w.document.write("<pre>"+receipt+"</pre>"); w.print(); w.close();
-    cart=[]; renderCart();
-  };
+// =====================
+// Print functionality
+// =====================
+document.getElementById("printBtn")?.addEventListener("click", () => {
+    const printContent = document.getElementById("salesTable").outerHTML;
+    const win = window.open("", "", "width=900,height=650");
+    win.document.write(`
+        <html>
+        <head>
+            <title>Sales Receipt</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #333; padding: 8px; text-align: left; }
+                th { background: #eee; }
+            </style>
+        </head>
+        <body>
+            <h2>Sales Receipt</h2>
+            ${printContent}
+            <p style="margin-top:20px;"><strong>Thank you for your purchase!</strong></p>
+        </body>
+        </html>
+    `);
+    win.document.close();
+    win.print();
 });
 </script>
+
+  
 <script>
 // --- Staff password ---
 const staffPassword="staff123";
