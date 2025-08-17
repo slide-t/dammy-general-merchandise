@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales / Checkout</title>
+<style>
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;color:#222;}
+  header{background:#001219;color:#fff;padding:16px;text-align:center;font-weight:700;font-size:1.3rem;}
+  .container{max-width:980px;margin:20px auto;padding:16px;}
+  .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 6px 18px rgba(0,0,0,.06);}
+  h2{margin-bottom:12px;color:#001219;}
+  input, select, button{width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;font-size:1rem;}
+  button{font-weight:700;cursor:pointer;border:none;}
+  .btn-primary{background:#0a9396;color:#fff;}
+  .btn-primary:hover{background:#007f89;}
+  .btn-warning{background:#ffb703;color:#000;}
+  .btn-warning:hover{background:#fb8500;}
+  .muted{color:#6b7c85;font-size:.92rem;}
+  table{width:100%;border-collapse:collapse;margin-top:12px;}
+  th,td{border:1px solid #ddd;padding:8px;text-align:center;}
+  th{background:#0077b6;color:#fff;}
+  #receipt{margin-top:20px;padding:12px;border:1px solid #ccc;border-radius:8px;background:#fefefe;display:none;}
+</style>
+</head>
+<body>
+<header>💰 Sales / Checkout</header>
+<div class="container">
+
+  <section class="card">
+    <h2>Checkout</h2>
+    <label>Scan or enter barcode</label>
+    <input id="barcodeInput" type="text" placeholder="Focus here and scan…">
+
+    <label>Quantity</label>
+    <input id="saleQty" type="number" min="1" value="1">
+
+    <button id="addSaleBtn" class="btn-primary">➕ Add to Cart</button>
+    <p id="saleMsg" class="muted"></p>
+  </section>
+
+  <section class="card">
+    <h2>Cart</h2>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th><th>Qty</th><th>Price (₦)</th><th>Total (₦)</th>
+          </tr>
+        </thead>
+        <tbody id="cartTable"></tbody>
+      </table>
+      <button id="checkoutBtn" class="btn-warning" style="margin-top:10px;">💳 Checkout & Print Receipt</button>
+    </div>
+  </section>
+
+  <section id="receipt" class="card">
+    <h2>Receipt</h2>
+    <pre id="receiptContent"></pre>
+  </section>
+
+</div>
+
+<script>
+let db, stockDB;
+const request=indexedDB.open("StoreDB",1);
+request.onupgradeneeded=e=>{
+  db=e.target.result;
+  if(!db.objectStoreNames.contains("sales")) db.createObjectStore("sales",{keyPath:"id",autoIncrement:true});
+};
+request.onsuccess=e=>{db=e.target.result;};
+request.onerror=()=>alert("DB error");
+
+const barcodeInput=document.getElementById("barcodeInput");
+const saleQty=document.getElementById("saleQty");
+const addSaleBtn=document.getElementById("addSaleBtn");
+const cartTable=document.getElementById("cartTable");
+const saleMsg=document.getElementById("saleMsg");
+const checkoutBtn=document.getElementById("checkoutBtn");
+const receiptSection=document.getElementById("receipt");
+const receiptContent=document.getElementById("receiptContent");
+
+let cart=[];
+
+// Fetch stock from stock store
+function getStockItem(barcode, callback){
+  const stockRequest=indexedDB.open("StoreDB",1);
+  stockRequest.onsuccess=e=>{
+    stockDB=e.target.result;
+    const tx=stockDB.transaction("stock","readonly").objectStore("stock");
+    const req=tx.get(barcode);
+    req.onsuccess=()=>callback(req.result);
+    req.onerror=()=>callback(null);
+  };
+}
+
+function updateCart(){
+  cartTable.innerHTML="";
+  cart.forEach(item=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${item.name}</td><td>${item.qty}</td><td>₦${item.price.toFixed(2)}</td><td>₦${(item.qty*item.price).toFixed(2)}</td>`;
+    cartTable.appendChild(tr);
+  });
+}
+
+addSaleBtn.addEventListener("click",()=>{
+  const code=barcodeInput.value.trim();
+  const qty=parseInt(saleQty.value,10)||1;
+  if(!code){saleMsg.textContent="Enter barcode"; return;}
+  getStockItem(code,item=>{
+    if(!item){saleMsg.textContent="Item not found"; return;}
+    if(item.qty<qty){saleMsg.textContent=`Not enough stock (Available: ${item.qty})`; return;}
+    // Add to cart
+    cart.push({barcode:code,name:item.name,qty,price:item.price});
+    updateCart();
+    saleMsg.textContent=`Added ${qty} x ${item.name}`;
+    barcodeInput.value="";
+    barcodeInput.focus();
+  });
+});
+
+// Allow Enter key
+barcodeInput.addEventListener("keypress",e=>{
+  if(e.key==="Enter"){ e.preventDefault(); addSaleBtn.click(); }
+});
+
+// Checkout
+checkoutBtn.addEventListener("click",()=>{
+  if(cart.length===0){alert("Cart is empty"); return;}
+  const tx=db.transaction("sales","readwrite").objectStore("sales");
+  const stockTx=stockDB.transaction("stock","readwrite").objectStore("stock");
+  let receiptText="--- Receipt ---\n";
+  let totalAmount=0;
+
+  cart.forEach(item=>{
+    receiptText+=`${item.name} x${item.qty} @₦${item.price.toFixed(2)} = ₦${(item.qty*item.price).toFixed(2)}\n`;
+    totalAmount+=item.qty*item.price;
+    // Save to sales store
+    tx.add({barcode:item.barcode,name:item.name,qty:item.qty,price:item.price,total:item.qty*item.price,date:new Date().toISOString()});
+    // Reduce stock
+    stockTx.get(item.barcode).onsuccess=e=>{
+      const stockItem=e.target.result;
+      if(stockItem){
+        stockItem.qty-=item.qty;
+        stockTx.put(stockItem);
+      }
+    };
+  });
+
+  receiptText+=`----------------\nTotal: ₦${totalAmount.toFixed(2)}`;
+  receiptContent.textContent=receiptText;
+  receiptSection.style.display="block";
+  window.print();
+  cart=[]; updateCart(); barcodeInput.focus();
+});
+</script>
+</body>
+</html>
