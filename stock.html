@@ -293,13 +293,6 @@ function generateBarcode() {
   return b;
 }
 
-// --- Elements ---
-const addStockBtn = document.getElementById("addStockBtn");
-const itemName = document.getElementById("itemName");
-const itemCategory = document.getElementById("itemCategory");
-const itemQty = document.getElementById("itemQty");
-const itemPrice = document.getElementById("itemPrice");
-
 // --- Spinner CSS ---
 const style = document.createElement("style");
 style.innerHTML = `
@@ -319,6 +312,13 @@ style.innerHTML = `
 }
 `;
 document.head.appendChild(style);
+
+// --- Elements ---
+const addStockBtn = document.getElementById("addStockBtn");
+const itemName = document.getElementById("itemName");
+const itemCategory = document.getElementById("itemCategory");
+const itemQty = document.getElementById("itemQty");
+const itemPrice = document.getElementById("itemPrice");
 
 // --- Add Stock ---
 addStockBtn.addEventListener("click", () => {
@@ -340,20 +340,21 @@ addStockBtn.addEventListener("click", () => {
   const dateAdded = new Date().toISOString();
   const tx = db.transaction("stock", "readwrite").objectStore("stock");
 
-  tx.add({ barcode, name, category, qty, price, dateAdded });
-
-  tx.oncomplete = () => {
-    renderStock();
+  const req = tx.add({ barcode, name, category, qty, price, dateAdded });
+  
+  req.onsuccess = () => {
+    // Stop spinner
     addStockBtn.disabled = false;
     addStockBtn.textContent = "➕ Add Item";
 
+    // Render table
+    renderStock();
+
     // Show confirmation modal
     showConfirmationModal(name, barcode);
-
-    // Reset input fields after modal is closed
   };
 
-  tx.onerror = () => {
+  req.onerror = () => {
     alert("❌ Item already exists or DB error.");
     addStockBtn.disabled = false;
     addStockBtn.textContent = "➕ Add Item";
@@ -416,7 +417,7 @@ function renderStock() {
         <td>${i.category}</td>
         <td>${i.qty}</td>
         <td>₦${i.price.toFixed(2)}</td>
-        <td><button onclick="deleteStock('${i.barcode}')" style="padding:5px 10px;border:none;background:red;color:#fff;border-radius:6px;cursor:pointer;">Delete</button></td>
+        <td><button class="btn-delete" data-barcode="${i.barcode}">Delete</button></td>
       `;
       tbody.appendChild(tr);
 
@@ -428,22 +429,24 @@ function renderStock() {
       }
       cursor.continue();
     }
+
+    // Attach delete listeners
+    document.querySelectorAll(".btn-delete").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const barcode = btn.getAttribute("data-barcode");
+        if (confirm("⚠ Are you sure you want to delete this item?")) {
+          const txDel = db.transaction("stock", "readwrite").objectStore("stock");
+          txDel.delete(barcode);
+          txDel.oncomplete = renderStock;
+        }
+      });
+    });
   };
 }
-
-// --- Delete Stock ---
-function deleteStock(barcode) {
-  if (confirm("⚠ Are you sure you want to delete this item?")) {
-    const tx = db.transaction("stock", "readwrite").objectStore("stock");
-    tx.delete(barcode);
-    tx.oncomplete = renderStock;
-  }
-}
 </script>
-
+  
 
   <!--
-  
 <script>
 // --- IndexedDB setup ---
 let db;
