@@ -261,6 +261,27 @@ function logout(){
   window.location.href="index.html"; // redirect to login modal
 }
 </script>
+<script>
+const deviceId = localStorage.getItem("deviceId") || crypto.randomUUID();
+localStorage.setItem("deviceId", deviceId);
 
+// Check if device is disabled
+function checkDeviceDisabled(){
+  const tx = db.transaction("devices","readonly").objectStore("devices");
+  tx.get(deviceId).onsuccess = e=>{
+    const dev = e.target.result;
+    if(dev && dev.disabled){
+      alert("⚠ Your device has been disabled by admin!");
+      window.location.href = "admin.html"; // redirect to login page
+    }
+  }
+}
+
+// Call on page load
+checkDeviceDisabled();
+  
+</script>
+
+  
 </body>
 </html>
