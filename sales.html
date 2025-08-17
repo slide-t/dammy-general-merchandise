@@ -286,6 +286,61 @@ function checkDeviceDisabled(){
 checkDeviceDisabled();
   
 </script>
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, onSnapshot, Timestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBDAvOznQoQnHhG59eCIJ1X3IHne_Ceudg",
+    authDomain: "dammymerchpwa.firebaseapp.com",
+    projectId: "dammymerchpwa",
+    storageBucket: "dammymerchpwa.firebasestorage.app",
+    messagingSenderId: "328994755570",
+    appId: "1:328994755570:web:d0ae2c7a95dee3213cd16b",
+    measurementId: "G-FY347NE91X"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const deviceId = crypto.randomUUID(); // unique per device
+  const userName = "Staff"; // optional: you can get from login modal
+  const page = window.location.pathname.split("/").pop();
+
+  // Register device
+  setDoc(doc(db, "activeDevices", deviceId), {
+    user: userName,
+    page: page,
+    lastActive: Timestamp.now(),
+    enabled: true
+  });
+
+  // Auto-logout if disabled
+  const deviceRef = doc(db, "activeDevices", deviceId);
+  onSnapshot(deviceRef, (docSnap) => {
+    if (docSnap.exists() && !docSnap.data().enabled) {
+      alert("You have been disabled by admin.");
+      window.location.href = "admin.html"; // redirect to admin access
+    }
+  });
+
+  // Update last active timestamp
+  let timeout = 5 * 60 * 1000; // 5 mins for staff
+  let timer;
+  function resetTimer() {
+    clearTimeout(timer);
+    timer = setTimeout(() => logoutStaff(), timeout);
+    setDoc(deviceRef, { lastActive: Timestamp.now() }, { merge: true });
+  }
+  function logoutStaff() {
+    alert("You have been logged out due to inactivity.");
+    window.location.href = "admin.html";
+  }
+
+  window.onload = resetTimer;
+  document.onmousemove = resetTimer;
+  document.onkeydown = resetTimer;
+</script>
 <!-- Include Font Awesome CDN in your <head> -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
 
