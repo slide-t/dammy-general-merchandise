@@ -565,6 +565,56 @@ function toggleDevice(deviceId,currentStatus){
 
 <iframe src="footer.html" style="width:100%; border:none;"></iframe>
 <script src="script.js"></script>
-    
+    <script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/service-worker.js").then(reg => {
+      // Listen for new updates
+      if (reg.waiting) {
+        showUpdateBar(reg.waiting);
+      }
+
+      reg.addEventListener("updatefound", () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            showUpdateBar(newWorker);
+          }
+        });
+      });
+    });
+
+    // Reload when new SW takes control
+    let refreshing;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      window.location.reload();
+      refreshing = true;
+    });
+  }
+
+  // Show update bar
+  function showUpdateBar(worker) {
+    const bar = document.createElement("div");
+    bar.innerHTML = `
+      <div style="
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: #007BFF; color: #fff; padding: 12px 20px; 
+        border-radius: 6px; font-size: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        z-index: 10000; display: flex; gap: 10px; align-items: center;
+      ">
+        <span>New version available</span>
+        <button id="refreshApp" style="
+          background: #fff; color: #007BFF; border: none; 
+          padding: 6px 12px; border-radius: 4px; cursor: pointer;
+        ">Refresh</button>
+      </div>
+    `;
+    document.body.appendChild(bar);
+
+    document.getElementById("refreshApp").addEventListener("click", () => {
+      worker.postMessage({ type: "SKIP_WAITING" });
+    });
+  }
+</script>
 </body>
 </html>
