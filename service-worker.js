@@ -1,4 +1,4 @@
-const CACHE_NAME = "dammy-pwa-cache-v1";
+const CACHE_NAME = "dammy-pwa-cache-v" + new Date().getTime(); // auto version based on timestamp
 const urlsToCache = [
   "/",
   "/stock.html",
@@ -10,7 +10,7 @@ const urlsToCache = [
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
 ];
 
-// Install SW and cache files
+// Install: cache latest files
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
@@ -18,7 +18,7 @@ self.addEventListener("install", event => {
   self.skipWaiting();
 });
 
-// Activate SW and cleanup old caches
+// Activate: clear ALL old caches automatically
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -30,14 +30,22 @@ self.addEventListener("activate", event => {
   self.clients.claim();
 });
 
-// Fetch requests: try cache first, then network
+// Fetch: network first, fallback to cache if offline
 self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
+    fetch(event.request)
+      .then(response => {
+        // Update cache with fresh response
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, response.clone());
+          return response;
+        });
+      })
+      .catch(() => caches.match(event.request)) // fallback to cache
   );
 });
 
-// Auto-update SW in background
+// Auto-update when a new SW is available
 self.addEventListener("message", event => {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
